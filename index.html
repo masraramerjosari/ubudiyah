@@ -125,17 +125,20 @@ async function loadPrayerTimes(){
  try{
    // myQuran menyediakan data jadwal sholat yang bersumber dari Kementerian Agama RI.
    // Cari ID Kota Malang secara otomatis agar tidak bergantung pada ID kota yang berubah.
-   let cityId = localStorage.getItem("myquran_malang_id");
-   if(!cityId){
-     const cityRes = await fetch("https://api.myquran.com/v2/sholat/kota/cari/malang",{cache:"no-store"});
-     if(!cityRes.ok) throw new Error("Gagal mencari Kota Malang");
-     const cityData = await cityRes.json();
-     const cities = Array.isArray(cityData?.data) ? cityData.data : [];
-     const city = cities.find(c=>String(c.lokasi||"").toUpperCase().includes("MALANG"));
-     if(!city?.id) throw new Error("Kota Malang tidak ditemukan");
-     cityId = String(city.id);
-     localStorage.setItem("myquran_malang_id",cityId);
-   }
+   // Selalu pastikan yang dipakai adalah KOTA MALANG, bukan KABUPATEN MALANG.
+   // Versi sebelumnya menyimpan ID pencarian pertama ke localStorage sehingga
+   // pada sebagian perangkat bisa terambil wilayah Malang yang berbeda.
+   localStorage.removeItem("myquran_malang_id");
+   const cityRes = await fetch("https://api.myquran.com/v2/sholat/kota/cari/malang",{cache:"no-store"});
+   if(!cityRes.ok) throw new Error("Gagal mencari Kota Malang");
+   const cityData = await cityRes.json();
+   const cities = Array.isArray(cityData?.data) ? cityData.data : [];
+   const city = cities.find(c=>{
+     const name=String(c.lokasi||c.nama||c.name||"").toUpperCase().trim();
+     return name === "KOTA MALANG" || name === "MALANG";
+   }) || cities.find(c=>String(c.lokasi||c.nama||c.name||"").toUpperCase().includes("KOTA MALANG"));
+   if(!city?.id) throw new Error("KOTA MALANG tidak ditemukan");
+   const cityId = String(city.id);
 
    const url=`https://api.myquran.com/v2/sholat/jadwal/${cityId}/${x.y}/${x.m}/${x.d}`;
    const res=await fetch(url,{cache:"no-store"});
@@ -152,7 +155,7 @@ async function loadPrayerTimes(){
      if(el && /^\d{2}:\d{2}/.test(value)){el.textContent=value.slice(0,5);filled++;}
    });
    if(filled<5) throw new Error("Sebagian waktu sholat tidak tersedia");
-   document.getElementById("prayerSource").textContent="Waktu sholat Kota Malang • sumber data Kementerian Agama RI • diperbarui otomatis";
+   document.getElementById("prayerSource").textContent="Waktu sholat KOTA MALANG • sumber data Kementerian Agama RI • diperbarui otomatis";
  }catch(e){
    console.warn("Jadwal sholat:",e);
    document.getElementById("prayerSource").textContent="Waktu sholat sementara tidak dapat dimuat. Periksa koneksi internet.";
@@ -264,7 +267,7 @@ async function loadDatabase(){
     }
     jumat=b.data.map(r=>[r.friday_date,r.muadzin,r.bilal,r.khotib_imam]);
     dbReady=true;
-    const note=document.getElementById("prayerSource"); if(note)note.textContent="Waktu sholat Kota Malang • database jadwal imam online • metode Kementerian Agama RI";
+    const note=document.getElementById("prayerSource"); if(note)note.textContent="Waktu sholat KOTA MALANG • database jadwal imam online • metode Kementerian Agama RI";
   }catch(e){
     dbReady=false;
     console.warn("Database belum siap:",e);
