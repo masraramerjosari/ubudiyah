@@ -42,8 +42,10 @@ body:before{top:-85px;left:-85px;transform:rotate(0deg)}body:after{right:-85px;b
 <section id="admin" class="admin">
 <div class="topbar"><div><h2>Panel Admin</h2><div class="small">Jadwal Ubudiyah Masjid Raden Rahmat</div></div><button class="btn secondary" onclick="showPublic()">Keluar</button></div>
 <div id="loginPanel" class="panel">
-<h3>Login Admin</h3><input id="u" class="input" placeholder="Username"><input id="p" class="input" type="password" placeholder="Password"><button class="btn primary" onclick="login()">Masuk</button>
-<p class="small">Demo awal: admin / admin123. Ganti kredensial sebelum dipakai publik.</p>
+<h3>Login Admin</h3><input id="u" class="input" type="email" autocomplete="username" placeholder="Email admin">
+<input id="p" class="input" type="password" autocomplete="current-password" placeholder="Password">
+<button class="btn primary" onclick="login()">Masuk</button>
+<p class="small">Login menggunakan akun Supabase Auth. Akun yang diberi hak admin dapat mengubah data dari HP/komputer mana pun.</p>
 </div>
 <div id="dashboard" class="hidden">
 <div class="tabs"><button class="btn primary" onclick="openTab('imamTab')">Jadwal Imam</button><button class="btn secondary" onclick="openTab('jumatTab')">Jadwal Jum'at</button></div>
@@ -62,6 +64,8 @@ body:before{top:-85px;left:-85px;transform:rotate(0deg)}body:after{right:-85px;b
 </div>
 </section>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js"></script>
 <script>
 const baseImam={
 "Senin":{dhuhur:"Bpk. H. SOEYONO",ashar:"Bpk. H. SUGITO",maghrib:"Bpk. BAHRUL ULUM",isya:"Bpk. ABDUL HAKIM",shubuh:"Bpk. H. MIFTAHUL ARIFIN"},
@@ -86,8 +90,10 @@ const baseJumat=[
 ["2026-11-06","Bpk. Fahmi","Bpk. Jaelani","Ust. Ahmad Firian"],["2026-11-13","Bpk. Ibnu","Bpk. Faisol","Ust. M. Baderun"],["2026-11-20","Bpk. Ipung","Bpk. Junaedi","Ust. Syamsudin"],["2026-11-27","Bpk. Jaelani","Bpk. M. Zainuri","Ust. H. Hadi Masruri"],
 ["2026-12-04","Bpk. Rustamaji","Bpk. Pujianto","Ust. Zainal Arifin"],["2026-12-11","Bpk. Syamsul A.","Bpk. Ahmad","Ust. M. Ayyinna Yusron"],["2026-12-18","Bpk. Ahmad","Bpk. Fahmi","Ust. H. Abdullah"],["2026-12-25","Bpk. Fahmi","Bpk. Jaelani","Ust. HM. Zubairi"]
 ];
-let imam=JSON.parse(localStorage.getItem("imam2026")||"null")||baseImam;
-let jumat=JSON.parse(localStorage.getItem("jumat2026")||"null")||baseJumat;
+let imam=structuredClone(baseImam);
+let jumat=structuredClone(baseJumat);
+const sb = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPABASE_CONFIG.key);
+let dbReady=false; let currentUser=null; let isAdmin=false;
 const dayNames=["Ahad","Senin","Selasa","Rabu","Kamis","Jum'at","Sabtu"];
 const fmt=new Intl.DateTimeFormat("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 function currentJumat(){
@@ -116,18 +122,95 @@ async function loadPrayerTimes(){
  try{const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error("API error");const data=await res.json();const t=data?.data?.timings||{};[["Fajr","Fajr"],["Dhuhr","Dhuhr"],["Asr","Asr"],["Maghrib","Maghrib"],["Isha","Isha"]].forEach(([key,id])=>{const el=document.getElementById("time-"+id);if(el&&t[key])el.textContent=t[key].slice(0,5)});document.getElementById("prayerSource").textContent="Waktu sholat Kota Malang • metode Kementerian Agama RI • diperbarui otomatis berdasarkan tanggal"}catch(e){document.getElementById("prayerSource").textContent="Waktu sholat belum dapat dimuat. Periksa koneksi internet."}
 }
 
-function showAdmin(){document.getElementById("public").classList.add("hide");document.getElementById("admin").classList.add("show")}
-function showPublic(){document.getElementById("admin").classList.remove("show");document.getElementById("public").classList.remove("hide")}
-function login(){if(document.getElementById("u").value==="admin"&&document.getElementById("p").value==="admin123"){document.getElementById("loginPanel").classList.add("hidden");document.getElementById("dashboard").classList.remove("hidden");buildImam();buildJumatList()}else alert("Username atau password salah.")}
-function openTab(id){["imamTab","jumatTab"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id))}
-function buildImam(){document.getElementById("imamForm").innerHTML=Object.entries(imam).map(([day,v])=>`<div class="panel"><b>${day}</b><div class="row">${["shubuh","dhuhur","ashar","maghrib","isya"].map(k=>`<label class="small">${k.toUpperCase()}<input class="input" data-day="${day}" data-k="${k}" value="${v[k]||""}"></label>`).join("")}</div></div>`).join("")}
-function saveImam(){document.querySelectorAll("#imamForm input").forEach(i=>imam[i.dataset.day][i.dataset.k]=i.value.trim());localStorage.setItem("imam2026",JSON.stringify(imam));render();alert("Jadwal imam tersimpan di perangkat ini.")}
-function buildJumatList(){document.getElementById("jumatList").innerHTML="<h4>Data Jadwal Jum'at</h4>"+jumat.map((x,i)=>`<div class="panel"><b>${x[0]}</b><div class="small">Muadzin: ${x[1]}<br>Bilal: ${x[2]}<br>Khotib & Imam: ${x[3]}</div><button class="btn secondary" onclick="editJ(${i})">Edit</button> <button class="btn danger" onclick="delJ(${i})">Hapus</button></div>`).join("")}
-function saveJumat(){let d=document.getElementById("jfDate").value;if(!d)return alert("Pilih tanggal Jum'at.");let row=[d,document.getElementById("jfMuadzin").value.trim(),document.getElementById("jfBilal").value.trim(),document.getElementById("jfKhotib").value.trim()];let idx=jumat.findIndex(x=>x[0]===d);if(idx>=0)jumat[idx]=row;else jumat.push(row);jumat.sort((a,b)=>a[0].localeCompare(b[0]));localStorage.setItem("jumat2026",JSON.stringify(jumat));render();buildJumatList();alert("Jadwal Jum'at tersimpan.");}
+
+function showAdmin(){document.getElementById("public").classList.add("hide");document.getElementById("admin").classList.add("show");}
+async function showPublic(){await sb.auth.signOut();currentUser=null;isAdmin=false;document.getElementById("admin").classList.remove("show");document.getElementById("public").classList.remove("hide");}
+async function login(){
+  const email=document.getElementById("u").value.trim(), password=document.getElementById("p").value;
+  if(!email||!password)return alert("Isi email dan password admin.");
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error)return alert("Login gagal: "+error.message);
+  currentUser=data.user;
+  const {data:admins,error:aerr}=await sb.from("admin_users").select("user_id,active").eq("user_id",currentUser.id).eq("active",true);
+  if(aerr||!admins?.length){await sb.auth.signOut();currentUser=null;return alert("Akun ini belum diberi hak admin.");}
+  isAdmin=true;
+  document.getElementById("loginPanel").classList.add("hidden");
+  document.getElementById("dashboard").classList.remove("hidden");
+  await loadDatabase(); buildImam(); buildJumatList();
+}
+function openTab(id){["imamTab","jumatTab"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id));}
+function buildImam(){
+  document.getElementById("imamForm").innerHTML=Object.entries(imam).map(([day,v])=>
+  `<div class="panel"><b>${day}</b><div class="row">${["shubuh","dhuhur","ashar","maghrib","isya"].map(k=>
+  `<label class="small">${k.toUpperCase()}<input class="input" data-day="${day}" data-k="${k}" value="${escapeHtml(v[k]||"")}"></label>`).join("")}</div></div>`).join("");
+}
+async function saveImam(){
+  if(!isAdmin)return alert("Anda bukan admin.");
+  const inputs=[...document.querySelectorAll("#imamForm input")];
+  const grouped={};
+  inputs.forEach(i=>{if(!grouped[i.dataset.day])grouped[i.dataset.day]={day_name:i.dataset.day};grouped[i.dataset.day][i.dataset.k]=i.value.trim();});
+  const payload=Object.values(grouped).map(x=>({day_name:x.day_name,shubuh:x.shubuh||"",dhuhur:x.dhuhur||"",ashar:x.ashar||"",maghrib:x.maghrib||"",isya:x.isya||""}));
+  const {error}=await sb.from("imam_schedule").upsert(payload,{onConflict:"day_name"});
+  if(error)return alert("Gagal menyimpan: "+error.message);
+  await loadDatabase(); render(); alert("Jadwal imam berhasil disimpan ke database online.");
+}
+function buildJumatList(){
+  document.getElementById("jumatList").innerHTML="<h4>Data Jadwal Jum'at</h4>"+jumat.map((x,i)=>
+  `<div class="panel"><b>${x[0]}</b><div class="small">Muadzin: ${escapeHtml(x[1])}<br>Bilal: ${escapeHtml(x[2])}<br>Khotib & Imam: ${escapeHtml(x[3])}</div><button class="btn secondary" onclick="editJ(${i})">Edit</button> <button class="btn danger" onclick="delJ(${i})">Hapus</button></div>`).join("");
+}
+async function saveJumat(){
+  if(!isAdmin)return alert("Anda bukan admin.");
+  let d=document.getElementById("jfDate").value;if(!d)return alert("Pilih tanggal Jum'at.");
+  const row={friday_date:d,muadzin:document.getElementById("jfMuadzin").value.trim(),bilal:document.getElementById("jfBilal").value.trim(),khotib_imam:document.getElementById("jfKhotib").value.trim()};
+  const {error}=await sb.from("friday_schedule").upsert(row,{onConflict:"friday_date"});
+  if(error)return alert("Gagal menyimpan: "+error.message);
+  await loadDatabase(); render(); buildJumatList(); alert("Jadwal Jum'at berhasil disimpan ke database online.");
+}
 function editJ(i){let x=jumat[i];document.getElementById("jfDate").value=x[0];document.getElementById("jfMuadzin").value=x[1];document.getElementById("jfBilal").value=x[2];document.getElementById("jfKhotib").value=x[3];openTab("jumatTab");}
-function delJ(i){if(confirm("Hapus jadwal ini?")){jumat.splice(i,1);localStorage.setItem("jumat2026",JSON.stringify(jumat));render();buildJumatList()}}
-function newJumat(){["jfDate","jfMuadzin","jfBilal","jfKhotib"].forEach(x=>document.getElementById(x).value="")}
-render();updateClock();setInterval(updateClock,1000);setInterval(()=>{render()},60000);
+async function delJ(i){
+  if(!isAdmin)return;
+  if(confirm("Hapus jadwal ini?")){
+    const {error}=await sb.from("friday_schedule").delete().eq("friday_date",jumat[i][0]);
+    if(error)return alert("Gagal menghapus: "+error.message);
+    await loadDatabase();render();buildJumatList();
+  }
+}
+function newJumat(){["jfDate","jfMuadzin","jfBilal","jfKhotib"].forEach(x=>document.getElementById(x).value="");}
+function escapeHtml(v){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));}
+async function loadDatabase(){
+  try{
+    const [a,b]=await Promise.all([
+      sb.from("imam_schedule").select("day_name,shubuh,dhuhur,ashar,maghrib,isya"),
+      sb.from("friday_schedule").select("friday_date,muadzin,bilal,khotib_imam").order("friday_date")
+    ]);
+    if(a.error||b.error)throw new Error(a.error?.message||b.error?.message);
+    if(a.data?.length){
+      imam={};
+      a.data.forEach(r=>imam[r.day_name]={shubuh:r.shubuh,dhuhur:r.dhuhur,ashar:r.ashar,maghrib:r.maghrib,isya:r.isya});
+    }
+    if(b.data?.length)jumat=b.data.map(r=>[r.friday_date,r.muadzin,r.bilal,r.khotib_imam]);
+    dbReady=true;
+    const note=document.getElementById("prayerSource"); if(note)note.textContent="Waktu sholat Kota Malang • database jadwal imam online • metode Kementerian Agama RI";
+  }catch(e){
+    dbReady=false;
+    console.warn("Database belum siap:",e);
+    const note=document.getElementById("prayerSource"); if(note)note.textContent="Database online belum tersambung; menampilkan data bawaan sementara.";
+  }
+}
+async function initAuth(){
+  const {data}=await sb.auth.getSession();
+  if(data?.session){
+    currentUser=data.session.user;
+    const {data:admins}=await sb.from("admin_users").select("user_id,active").eq("user_id",currentUser.id).eq("active",true);
+    if(admins?.length){
+      isAdmin=true;
+      document.getElementById("loginPanel").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+    } else { await sb.auth.signOut(); currentUser=null; }
+  }
+}
+async function boot(){await loadDatabase();render();await initAuth();if(isAdmin){buildImam();buildJumatList();}}
+boot();updateClock();setInterval(updateClock,1000);setInterval(()=>{render()},60000);
 </script>
 </body>
 </html>
