@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f5132">
+<title>Jadwal Ubudiyah — Masjid Raden Rahmat</title>
+<style>
+:root{--green:#0f5132;--green2:#176b45;--gold:#c9a227;--cream:#f7f4e9;--text:#173326;--muted:#66756c;--card:#fff;--line:#e6e8e2}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#edf5ef 0,#f8faf7 55%,#eef4ef 100%);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--text)}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.035;background-image:radial-gradient(circle at 25px 25px,#0f5132 1px,transparent 1px);background-size:50px 50px}
+.app{max-width:620px;margin:auto;padding-bottom:35px}.hero{background:linear-gradient(135deg,#0b4329,#176b45);color:white;padding:28px 20px 25px;border-radius:0 0 28px 28px;box-shadow:0 8px 25px #0f513220;text-align:center}
+.mosque{font-size:38px}.hero h1{font-size:22px;line-height:1.25;margin:8px 0 4px}.hero p{margin:0;opacity:.88;font-size:13px}.date-card{margin:18px 15px 0;background:white;border:1px solid #e7e9e2;border-radius:20px;padding:16px;text-align:center;box-shadow:0 7px 20px #17332612}.date-card .day{font-size:15px;font-weight:700;color:var(--green)}.date-card .date{font-size:20px;font-weight:800;margin-top:3px}.section{padding:0 15px;margin-top:18px}.section-title{display:flex;align-items:center;gap:9px;font-weight:800;font-size:16px;margin:0 3px 10px;color:var(--green)}.prayer{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:17px;padding:13px 14px;margin:8px 0;box-shadow:0 4px 13px #1733260a}.icon{width:42px;height:42px;border-radius:13px;background:#edf6ef;display:grid;place-items:center;font-size:20px;flex:none}.prayer .label{font-weight:800;font-size:14px}.prayer .imam{font-size:14px;margin-top:2px;color:#43564c}.jumat{background:linear-gradient(135deg,#fffdf3,#fff);border:1px solid #eadca6;border-radius:20px;padding:17px;box-shadow:0 5px 18px #a4861a18}.jumat-date{font-weight:800;color:#725c05;margin-bottom:12px}.person{padding:10px 0;border-top:1px solid #eee8cf}.person:first-of-type{border-top:0}.role{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#81764d;font-weight:800}.name{font-weight:750;margin-top:2px}.notice{font-size:12px;color:var(--muted);text-align:center;margin:18px 20px}.admin-link{display:block;margin:22px auto 0;border:0;background:none;color:#789083;font-size:12px;text-decoration:underline}.admin{display:none;padding:16px}.admin.show{display:block}.public.hide{display:none}.panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px;margin:12px 0}.input{width:100%;padding:11px;border:1px solid #dfe4de;border-radius:10px;margin:5px 0 10px;font:inherit}.btn{border:0;border-radius:11px;padding:10px 14px;font-weight:750;cursor:pointer}.primary{background:var(--green);color:#fff}.secondary{background:#edf4ef;color:var(--green)}.danger{background:#fbeceb;color:#9c3029}.tabs{display:flex;gap:8px;margin-bottom:10px}.tabs button{flex:1}.small{font-size:12px;color:var(--muted)}.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}.topbar{display:flex;justify-content:space-between;align-items:center}.admin h2{color:var(--green);margin:4px 0}.hidden{display:none!important}
+@media(min-width:650px){body{padding-bottom:30px}.hero{border-radius:0 0 30px 30px}}
+</style>
+</head>
+<body>
+<div class="app">
+<section id="public" class="public">
+<header class="hero"><div class="mosque">🕌</div><h1>JADWAL UBUDIYAH</h1><p>Masjid Raden Rahmat Merjosari Malang</p></header>
+<div class="date-card"><div class="day" id="todayDay"></div><div class="date" id="todayDate"></div></div>
+<section class="section"><h2 class="section-title">🕌 Jadwal Imam Sholat</h2><div id="prayers"></div></section>
+<section class="section"><h2 class="section-title">🕋 Petugas Sholat Jum'at</h2><div id="jumat"></div></section>
+<p class="notice">Jadwal Jum'at ditampilkan mulai Sabtu satu minggu sebelum tanggal Jum'at sampai hari Jum'at.</p>
+<button class="admin-link" onclick="showAdmin()">Akses Admin</button>
+</section>
+
+<section id="admin" class="admin">
+<div class="topbar"><div><h2>Panel Admin</h2><div class="small">Jadwal Ubudiyah Masjid Raden Rahmat</div></div><button class="btn secondary" onclick="showPublic()">Keluar</button></div>
+<div id="loginPanel" class="panel">
+<h3>Login Admin</h3><input id="u" class="input" placeholder="Username"><input id="p" class="input" type="password" placeholder="Password"><button class="btn primary" onclick="login()">Masuk</button>
+<p class="small">Demo awal: admin / admin123. Ganti kredensial sebelum dipakai publik.</p>
+</div>
+<div id="dashboard" class="hidden">
+<div class="tabs"><button class="btn primary" onclick="openTab('imamTab')">Jadwal Imam</button><button class="btn secondary" onclick="openTab('jumatTab')">Jadwal Jum'at</button></div>
+<div id="imamTab" class="panel">
+<h3>Jadwal Imam Berdasarkan Hari</h3><p class="small">Data mengikuti jadwal Rowatib 2026 dari dokumen sumber.</p>
+<div id="imamForm"></div><button class="btn primary" onclick="saveImam()">Simpan Perubahan</button>
+</div>
+<div id="jumatTab" class="panel hidden">
+<h3>Jadwal Petugas Jum'at</h3><label>Tanggal Jum'at</label><input id="jfDate" class="input" type="date">
+<label>Muadzin</label><input id="jfMuadzin" class="input">
+<label>Bilal</label><input id="jfBilal" class="input">
+<label>Khotib & Imam</label><input id="jfKhotib" class="input">
+<div class="row"><button class="btn primary" onclick="saveJumat()">Simpan</button><button class="btn secondary" onclick="newJumat()">Kosongkan</button></div>
+<div id="jumatList"></div>
+</div>
+</div>
+</section>
+</div>
+<script>
+const baseImam={
+"Senin":{dhuhur:"Bpk. H. SOEYONO",ashar:"Bpk. H. SUGITO",maghrib:"Bpk. BAHRUL ULUM",isya:"Bpk. ABDUL HAKIM",shubuh:"Bpk. H. MIFTAHUL ARIFIN"},
+"Selasa":{dhuhur:"Bpk. H. SOEYONO",ashar:"Bpk. H. SUGITO",maghrib:"Bpk. H. BADERUN",isya:"Bpk. ABDUL HAKIM",shubuh:"Bpk. H. MIFTAHUL ARIFIN"},
+"Rabu":{dhuhur:"Bpk. H. BADERUN",ashar:"Bpk. AHMAD",maghrib:"Bpk. H. BADERUN",isya:"Bpk. ABDUL HAKIM",shubuh:"Bpk. MUKMIN ARIF"},
+"Kamis":{dhuhur:"Bpk. H. BADERUN",ashar:"Bpk. AHMAD",maghrib:"Bpk. AHMAD",isya:"Bpk. YASIN",shubuh:"Bpk. MUKMIN ARIF"},
+"Jum'at":{dhuhur:"JUM’ATAN",ashar:"Bpk. FAISOL (RT 2)",maghrib:"Bpk. AHMAD",isya:"Bpk. FAISHOL MAKSUM",shubuh:"Bpk. MUKMIN ARIF"},
+"Sabtu":{dhuhur:"Bpk. H. ABDULLAH",ashar:"Bpk. FAISOL (RT 2)",maghrib:"Bpk. HARUN",isya:"Bpk. FAISHOL MAKSUM",shubuh:"Bpk. YASIN"},
+"Ahad":{dhuhur:"Bpk. H. ABDULLAH",ashar:"Bpk. FAISOL (RT 2)",maghrib:"Bpk. HARUN",isya:"Bpk. FAISHOL MAKSUM",shubuh:"Bpk. YASIN"}
+};
+const baseJumat=[
+["2026-01-02","Bpk. Syamsul A.","Bpk. Ahmad","Ust. Moch. Nawawi"],["2026-01-09","Bpk. Ahmad","Bpk. Fahmi","Ust. M. Aminuddin"],["2026-01-16","Bpk. Fahmi","Bpk. Jaelani","Ust. H. Syaiful Mustofa"],["2026-01-23","Bpk. Ibnu","Bpk. Faisol","Ust. HM. Shohib"],["2026-01-30","Bpk. Ipung","Bpk. Junaedi","Ust. Moch. Solihin"],
+["2026-02-06","Bpk. Jaelani","Bpk. M. Zainuri","Ust. H. Agus Maimun"],["2026-02-13","Bpk. Rustamaji","Bpk. Pujianto","Ust. Yarmanu"],["2026-02-20","Bpk. Syamsul A.","Bpk. Ahmad","Ust. Fahmi Reza"],["2026-02-27","Bpk. Ahmad","Bpk. Fahmi","Ust. Zainal Arifin"],
+["2026-03-06","Bpk. Fahmi","Bpk. Jaelani","Ust. Wahyudi"],["2026-03-13","Bpk. Ibnu","Bpk. Faisol","Ust. Ainun Najib"],["2026-03-20","Bpk. Ipung","Bpk. Junaedi","Ust. Ir. Abdul Basit"],["2026-03-27","Bpk. Jaelani","Bpk. M. Zainuri","Ust. Abdul hakim"],
+["2026-04-03","Bpk. Rustamaji","Bpk. Pujianto","Ust. M. Agus Nurhalimi"],["2026-04-10","Bpk. Syamsul A.","Bpk. Ahmad","Ust. H. Bisri Mustofa"],["2026-04-17","Bpk. Ahmad","Bpk. Fahmi","Ust. M. Fahim Tharaba"],["2026-04-24","Bpk. Fahmi","Bpk. Jaelani","Ust. Ahmad Firian"],
+["2026-05-01","Bpk. Ibnu","Bpk. Faisol","Ust. Syamsudin"],["2026-05-08","Bpk. Ipung","Bpk. Junaedi","Ust. M. Baderun"],["2026-05-15","Bpk. Jaelani","Bpk. M. Zainuri","Ust. M. Ayyinna Yusron"],["2026-05-22","Bpk. Rustamaji","Bpk. Pujianto","Ust. Yasin"],["2026-05-29","Bpk. Syamsul A.","Bpk. Ahmad","Ust. Harun"],
+["2026-06-05","Bpk. Ahmad","Bpk. Fahmi","Ust. Nadif Anwar"],["2026-06-12","Bpk. Fahmi","Bpk. Jaelani","Ust. HM. Zubairi"],["2026-06-19","Bpk. Ibnu","Bpk. Faisol","Ust. H. Soeyono"],["2026-06-26","Bpk. Ipung","Bpk. Junaedi","Ust. H. Abdullah"],
+["2026-07-03","Bpk. Jaelani","Bpk. M. Zainuri","Ust. Yasin"],["2026-07-10","Bpk. Rustamaji","Bpk. Pujianto","Ust. Slamet Irfan AS."],["2026-07-17","Bpk. Syamsul A.","Bpk. Ahmad","Ust. Moch. Nawawi"],["2026-07-24","Bpk. Ahmad","Bpk. Fahmi","Ust. M. Aminuddin"],["2026-07-31","Bpk. Fahmi","Bpk. Jaelani","Ust. H. Syaiful Mustofa"],
+["2026-08-07","Bpk. Ibnu","Bpk. Faisol","Ust. HM. Shohib"],["2026-08-14","Bpk. Ipung","Bpk. Junaedi","Ust. Moch. Solihin"],["2026-08-21","Bpk. Jaelani","Bpk. M. Zainuri","Ust. H. Agus Maimun"],["2026-08-28","Bpk. Rustamaji","Bpk. Pujianto","Ust. Fahmi Reza"],
+["2026-09-04","Bpk. Syamsul A.","Bpk. Ahmad","Ust. Harun"],["2026-09-11","Bpk. Ahmad","Bpk. Fahmi","Ust. Ainun Najib"],["2026-09-18","Bpk. Fahmi","Bpk. Jaelani","Ust. Wahyudi"],["2026-09-25","Bpk. Ibnu","Bpk. Faisol","Ust. M. Agus Nurhalimi"],
+["2026-10-02","Bpk. Ipung","Bpk. Junaedi","Ust. Ir. Abdul Basit"],["2026-10-09","Bpk. Jaelani","Bpk. M. Zainuri","Ust. Abdul hakim"],["2026-10-16","Bpk. Rustamaji","Bpk. Pujianto","Ust. Yarmanu"],["2026-10-23","Bpk. Syamsul A.","Bpk. Ahmad","Ust. H. Bisri Mustofa"],["2026-10-30","Bpk. Ahmad","Bpk. Fahmi","Ust. M. Fahim Tharaba"],
+["2026-11-06","Bpk. Fahmi","Bpk. Jaelani","Ust. Ahmad Firian"],["2026-11-13","Bpk. Ibnu","Bpk. Faisol","Ust. M. Baderun"],["2026-11-20","Bpk. Ipung","Bpk. Junaedi","Ust. Syamsudin"],["2026-11-27","Bpk. Jaelani","Bpk. M. Zainuri","Ust. H. Hadi Masruri"],
+["2026-12-04","Bpk. Rustamaji","Bpk. Pujianto","Ust. Zainal Arifin"],["2026-12-11","Bpk. Syamsul A.","Bpk. Ahmad","Ust. M. Ayyinna Yusron"],["2026-12-18","Bpk. Ahmad","Bpk. Fahmi","Ust. H. Abdullah"],["2026-12-25","Bpk. Fahmi","Bpk. Jaelani","Ust. HM. Zubairi"]
+];
+let imam=JSON.parse(localStorage.getItem("imam2026")||"null")||baseImam;
+let jumat=JSON.parse(localStorage.getItem("jumat2026")||"null")||baseJumat;
+const dayNames=["Ahad","Senin","Selasa","Rabu","Kamis","Jum'at","Sabtu"];
+const fmt=new Intl.DateTimeFormat("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+function iso(d){return d.toISOString().slice(0,10)}
+function today(){let d=new Date();return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function currentJumat(){
+ const t=today(), active=[];
+ for(const x of jumat){let f=new Date(x[0]+"T00:00:00");let start=new Date(f);start.setDate(start.getDate()-6);if(t>=start&&t<=f)active.push(x)}
+ if(active.length)return active[0];
+ return jumat.find(x=>new Date(x[0]+"T00:00:00")>=t)||jumat[jumat.length-1];
+}
+function render(){
+ const d=today(), day=dayNames[d.getDay()];
+ document.getElementById("todayDay").textContent=fmt.format(d).split(",")[0];
+ document.getElementById("todayDate").textContent=fmt.format(d).split(", ").slice(1).join(", ");
+ const p=imam[day];
+ const arr=[["🌙","Shubuh",p.shubuh],["☀️","Dhuhur",p.dhuhur],["🌤️","Ashar",p.ashar],["🌇","Maghrib",p.maghrib],["🌙","Isya",p.isya]];
+ document.getElementById("prayers").innerHTML=arr.map(a=>`<div class="prayer"><div class="icon">${a[0]}</div><div><div class="label">${a[1]}</div><div class="imam">${a[2]}</div></div></div>`).join("");
+ const j=currentJumat();
+ document.getElementById("jumat").innerHTML=j?`<div class="jumat"><div class="jumat-date">Jum'at, ${new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(j[0]+"T00:00:00"))}</div><div class="person"><div class="role">Muadzin</div><div class="name">${j[1]}</div></div><div class="person"><div class="role">Bilal</div><div class="name">${j[2]}</div></div><div class="person"><div class="role">Khotib & Imam</div><div class="name">${j[3]}</div></div></div>`:"<div class='jumat'>Belum ada data jadwal Jum'at.</div>";
+}
+function showAdmin(){document.getElementById("public").classList.add("hide");document.getElementById("admin").classList.add("show")}
+function showPublic(){document.getElementById("admin").classList.remove("show");document.getElementById("public").classList.remove("hide")}
+function login(){if(document.getElementById("u").value==="admin"&&document.getElementById("p").value==="admin123"){document.getElementById("loginPanel").classList.add("hidden");document.getElementById("dashboard").classList.remove("hidden");buildImam();buildJumatList()}else alert("Username atau password salah.")}
+function openTab(id){["imamTab","jumatTab"].forEach(x=>document.getElementById(x).classList.toggle("hidden",x!==id))}
+function buildImam(){document.getElementById("imamForm").innerHTML=Object.entries(imam).map(([day,v])=>`<div class="panel"><b>${day}</b><div class="row">${["shubuh","dhuhur","ashar","maghrib","isya"].map(k=>`<label class="small">${k.toUpperCase()}<input class="input" data-day="${day}" data-k="${k}" value="${v[k]||""}"></label>`).join("")}</div></div>`).join("")}
+function saveImam(){document.querySelectorAll("#imamForm input").forEach(i=>imam[i.dataset.day][i.dataset.k]=i.value.trim());localStorage.setItem("imam2026",JSON.stringify(imam));render();alert("Jadwal imam tersimpan di perangkat ini.")}
+function buildJumatList(){document.getElementById("jumatList").innerHTML="<h4>Data Jadwal Jum'at</h4>"+jumat.map((x,i)=>`<div class="panel"><b>${x[0]}</b><div class="small">Muadzin: ${x[1]}<br>Bilal: ${x[2]}<br>Khotib & Imam: ${x[3]}</div><button class="btn secondary" onclick="editJ(${i})">Edit</button> <button class="btn danger" onclick="delJ(${i})">Hapus</button></div>`).join("")}
+function saveJumat(){let d=document.getElementById("jfDate").value;if(!d)return alert("Pilih tanggal Jum'at.");let row=[d,document.getElementById("jfMuadzin").value.trim(),document.getElementById("jfBilal").value.trim(),document.getElementById("jfKhotib").value.trim()];let idx=jumat.findIndex(x=>x[0]===d);if(idx>=0)jumat[idx]=row;else jumat.push(row);jumat.sort((a,b)=>a[0].localeCompare(b[0]));localStorage.setItem("jumat2026",JSON.stringify(jumat));render();buildJumatList();alert("Jadwal Jum'at tersimpan.");}
+function editJ(i){let x=jumat[i];document.getElementById("jfDate").value=x[0];document.getElementById("jfMuadzin").value=x[1];document.getElementById("jfBilal").value=x[2];document.getElementById("jfKhotib").value=x[3];openTab("jumatTab");}
+function delJ(i){if(confirm("Hapus jadwal ini?")){jumat.splice(i,1);localStorage.setItem("jumat2026",JSON.stringify(jumat));render();buildJumatList()}}
+function newJumat(){["jfDate","jfMuadzin","jfBilal","jfKhotib"].forEach(x=>document.getElementById(x).value="")}
+render();
+</script>
+</body>
+</html>
