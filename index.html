@@ -109,7 +109,7 @@ function render(){
  const d=today(), day=dayNames[d.getDay()];
  document.getElementById("todayDay").textContent=new Intl.DateTimeFormat("id-ID",{weekday:"long",timeZone:"Asia/Jakarta"}).format(d);
  document.getElementById("todayDate").textContent=new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Jakarta"}).format(d);
- document.getElementById("hijriDate").textContent=new Intl.DateTimeFormat("en-u-ca-islamic",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Jakarta"}).format(d)+" H";
+ document.getElementById("hijriDate").textContent="Memuat tanggal Hijriyah…";
  const p=imam[day];
  const arr=[["🌙","Shubuh",p.shubuh,"Fajr"],["☀️","Dhuhur",p.dhuhur,"Dhuhr"],["🌤️","Ashar",p.ashar,"Asr"],["🌇","Maghrib",p.maghrib,"Maghrib"],["🌙","Isya",p.isya,"Isha"]];
  document.getElementById("prayers").innerHTML=arr.map((a,i)=>`<div class="prayer"><div class="num">${i+1}</div><div><span class="icon" aria-hidden="true">${a[0]}</span><span class="time" id="time-${a[3]}">--:--</span><span class="label">${a[1]}</span></div><div class="imam" title="${escapeHtml(a[2])}"><strong>${escapeHtml(a[2])}</strong></div></div>`).join("");
@@ -118,10 +118,84 @@ function render(){
  loadPrayerTimes();
 }
 async function loadPrayerTimes(){
- const x=malangParts(); const url=`https://api.aladhan.com/v1/timingsByCity/${String(x.d).padStart(2,"0")}-${String(x.m).padStart(2,"0")}-${x.y}?city=Malang&country=Indonesia&method=20&school=1`;
- try{const res=await fetch(url,{cache:"no-store"});if(!res.ok)throw new Error("API error");const data=await res.json();const t=data?.data?.timings||{};const h=data?.data?.date?.hijri;if(h?.day&&h?.month?.en&&h?.year){document.getElementById("hijriDate").textContent=`${h.day} ${h.month.en} ${h.year} H`;}[["Fajr","Fajr"],["Dhuhr","Dhuhr"],["Asr","Asr"],["Maghrib","Maghrib"],["Isha","Isha"]].forEach(([key,id])=>{const el=document.getElementById("time-"+id);if(el&&t[key])el.textContent=t[key].slice(0,5)});document.getElementById("prayerSource").textContent="Waktu sholat Kota Malang • metode Kementerian Agama RI • diperbarui otomatis berdasarkan tanggal"}catch(e){try{const hijri=new Intl.DateTimeFormat("id-ID-u-ca-islamic",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Jakarta"}).format(new Date());document.getElementById("hijriDate").textContent=hijri.replace(/M/gi,"H");}catch(_){document.getElementById("hijriDate").textContent="Tanggal Hijriyah";}document.getElementById("prayerSource").textContent="Waktu sholat belum dapat dimuat. Periksa koneksi internet."}
+ const x=malangParts();
+ const hijri = getHijriKemenag2026(x.y,x.m,x.d);
+ if(hijri) document.getElementById("hijriDate").textContent=hijri;
+
+ try{
+   // myQuran menyediakan data jadwal sholat yang bersumber dari Kementerian Agama RI.
+   // Cari ID Kota Malang secara otomatis agar tidak bergantung pada ID kota yang berubah.
+   let cityId = localStorage.getItem("myquran_malang_id");
+   if(!cityId){
+     const cityRes = await fetch("https://api.myquran.com/v2/sholat/kota/cari/malang",{cache:"no-store"});
+     if(!cityRes.ok) throw new Error("Gagal mencari Kota Malang");
+     const cityData = await cityRes.json();
+     const cities = Array.isArray(cityData?.data) ? cityData.data : [];
+     const city = cities.find(c=>String(c.lokasi||"").toUpperCase().includes("MALANG"));
+     if(!city?.id) throw new Error("Kota Malang tidak ditemukan");
+     cityId = String(city.id);
+     localStorage.setItem("myquran_malang_id",cityId);
+   }
+
+   const url=`https://api.myquran.com/v2/sholat/jadwal/${cityId}/${x.y}/${x.m}/${x.d}`;
+   const res=await fetch(url,{cache:"no-store"});
+   if(!res.ok) throw new Error("API jadwal sholat gagal");
+   const data=await res.json();
+   const t=data?.data?.jadwal;
+   if(!t) throw new Error("Data jadwal kosong");
+
+   const map=[["subuh","Fajr"],["dzuhur","Dhuhr"],["ashar","Asr"],["maghrib","Maghrib"],["isya","Isha"]];
+   let filled=0;
+   map.forEach(([key,id])=>{
+     const el=document.getElementById("time-"+id);
+     const value=String(t[key]||"").trim();
+     if(el && /^\d{2}:\d{2}/.test(value)){el.textContent=value.slice(0,5);filled++;}
+   });
+   if(filled<5) throw new Error("Sebagian waktu sholat tidak tersedia");
+   document.getElementById("prayerSource").textContent="Waktu sholat Kota Malang • sumber data Kementerian Agama RI • diperbarui otomatis";
+ }catch(e){
+   console.warn("Jadwal sholat:",e);
+   document.getElementById("prayerSource").textContent="Waktu sholat sementara tidak dapat dimuat. Periksa koneksi internet.";
+ }
 }
 
+/* Kalender Hijriah Indonesia 2026.
+   Acuan: Kalender Hijriah Indonesia/Kemenag RI. Untuk 2026, 14 Agustus = 1 Rabiul Awal 1448 H.
+   Perhitungan dilakukan sendiri agar HP tidak bergantung pada Intl Islamic Calendar. */
+function getHijriKemenag2026(y,m,d){
+ const months=["Muharram","Safar","Rabiul Awal","Rabiul Akhir","Jumadil Awal","Jumadil Akhir","Rajab","Syaban","Ramadan","Syawal","Zulkaidah","Zulhijah"];
+ const starts=[
+  [2026,1,1,12,7,1447],[2026,1,21,1,27,1447],[2026,2,19,30,28,1447],
+  [2026,3,21,11,28,1447],[2026,4,20,22,28,1447],[2026,5,20,3,29,1447],
+  [2026,6,18,1,30,1447],[2026,7,18,1,30,1447],[2026,8,14,1,1,1448],
+  [2026,9,13,1,2,1448],[2026,10,13,1,3,1448],[2026,11,11,1,4,1448],
+  [2026,12,11,1,5,1448]
+ ];
+ // Gunakan anchor yang paling dekat; 2026-08-14 adalah 1 Rabiul Awal 1448.
+ const target=new Date(Date.UTC(y,m-1,d));
+ const anchor=new Date(Date.UTC(2026,7,14));
+ const diff=Math.round((target-anchor)/86400000);
+ if(y!==2026) return "";
+ // Berdasarkan kalender Kemenag 2026: 1 Rabiul Awal 1448 = 14 Agustus 2026.
+ // Susunan hari dihitung dari panjang bulan Hijriah yang berlaku pada kalender 2026.
+ const monthLengths={
+   "1448-2":30, "1448-3":30, "1448-4":29, "1448-5":30, "1448-6":29,
+   "1448-7":30, "1448-8":30, "1448-9":30, "1448-10":29, "1448-11":30, "1448-12":29
+ };
+ let hy=1448, hm=3, hd=1, n=diff;
+ while(n>0){
+   const len=monthLengths[`${hy}-${hm}`]||30;
+   hd++;
+   if(hd>len){hd=1;hm++;if(hm>12){hm=1;hy++;}}
+   n--;
+ }
+ while(n<0){
+   hd--;
+   if(hd<1){hm--;if(hm<1){hm=12;hy--;}hd=monthLengths[`${hy}-${hm}`]||30;}
+   n++;
+ }
+ return `${hd} ${months[hm-1]} ${hy} H`;
+}
 
 function showAdmin(){document.getElementById("public").classList.add("hide");document.getElementById("admin").classList.add("show");}
 async function showPublic(){await sb.auth.signOut();currentUser=null;isAdmin=false;document.getElementById("admin").classList.remove("show");document.getElementById("public").classList.remove("hide");}
