@@ -237,6 +237,32 @@ body:after{right:-125px;bottom:-125px}
   .notice{font-size:12px;margin-left:7%;margin-right:7%}
 }
 @media(min-width:941px){body{padding:24px 0}.app{border-radius:0 0 24px 24px}}
+
+/* ===== Navigasi tanggal / swipe ===== */
+.date-navigation{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin:10px 8% 0;
+}
+.date-nav-btn{
+  border:1px solid #c7d6cc;background:#f4f7f3;color:#006b50;
+  border-radius:12px;padding:8px 12px;font-weight:800;cursor:pointer;
+  min-width:44px;transition:transform .15s,background .15s;
+}
+.date-nav-btn:active{transform:scale(.94);background:#e7f1eb}
+.date-nav-today{flex:1;max-width:130px}
+.date-swipe-hint{text-align:center;font-size:11px;color:#718078;margin:7px 10px 0}
+#swipeArea{touch-action:pan-y;user-select:none}
+#swipeArea.slide-next{animation:slideNext .22s ease}
+#swipeArea.slide-prev{animation:slidePrev .22s ease}
+@keyframes slideNext{0%{transform:translateX(0);opacity:1}45%{transform:translateX(-18px);opacity:.65}100%{transform:translateX(0);opacity:1}}
+@keyframes slidePrev{0%{transform:translateX(0);opacity:1}45%{transform:translateX(18px);opacity:.65}100%{transform:translateX(0);opacity:1}}
+@media(max-width:600px){
+  .date-navigation{margin-left:8%;margin-right:8%;gap:5px}
+  .date-nav-btn{padding:7px 9px;font-size:12px}
+  .date-nav-today{max-width:100px}
+  .date-swipe-hint{font-size:10px}
+}
+
 </style>
 </head>
 <body>
@@ -251,9 +277,17 @@ body:after{right:-125px;bottom:-125px}
   </div>
 </header>
 <div class="date-card"><div class="day" id="todayDay"></div><div class="date" id="todayDate"></div><div class="hijri" id="hijriDate"></div></div>
+<div class="date-navigation" aria-label="Navigasi tanggal">
+  <button class="date-nav-btn" id="prevDayBtn" type="button" aria-label="Hari sebelumnya">‹</button>
+  <button class="date-nav-btn date-nav-today" id="todayBtn" type="button">Hari Ini</button>
+  <button class="date-nav-btn" id="nextDayBtn" type="button" aria-label="Hari berikutnya">›</button>
+</div>
+<div class="date-swipe-hint">Geser ke kiri untuk hari berikutnya • geser ke kanan untuk hari sebelumnya</div>
+<div id="swipeArea">
 <section class="section"><h2 class="section-title"><span class="title-icon">🕌</span>Jadwal Imam Sholat</h2><div class="prayer-wrap"><div class="digital"><span class="digital-label">WAKTU MALANG (WIB)</span><span class="digital-time" id="clock">--:--:--</span></div><div class="prayer-head"><div>NO</div><div>WAKTU SHOLAT</div><div>IMAM</div></div><div id="prayers"></div><div class="source-note" id="prayerSource"></div></div></section>
 <section class="section"><h2 class="section-title"><span class="title-icon">🕋</span>Petugas Sholat Jum'at</h2><div id="jumat"></div></section>
 <p class="notice">Mohon petugas melaksanakan tugasnya sesuai jadwal_copyright@Yasin, M.pd.</p>
+</div>
 <div class="footer-orn" aria-hidden="true"></div><button class="admin-link" onclick="showAdmin()">Akses Admin</button>
 </section>
 
@@ -314,28 +348,99 @@ const sb = window.supabase.createClient(window.SUPABASE_CONFIG.url, window.SUPAB
 let dbReady=false; let currentUser=null; let isAdmin=false;
 const dayNames=["Ahad","Senin","Selasa","Rabu","Kamis","Jum'at","Sabtu"];
 const fmt=new Intl.DateTimeFormat("id-ID",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-function currentJumat(){
- const t=today(), active=[];
- for(const x of jumat){let f=new Date(x[0]+"T00:00:00");let start=new Date(f);start.setDate(start.getDate()-6);if(t>=start&&t<=f)active.push(x)}
- if(active.length)return active[0];
- return jumat.find(x=>new Date(x[0]+"T00:00:00")>=t)||jumat[jumat.length-1];
+function currentJumat(forDate=selectedDate){
+  const t=cloneDate(forDate), active=[];
+  for(const x of jumat){
+    let f=new Date(x[0]+"T00:00:00");
+    let start=new Date(f);
+    start.setDate(start.getDate()-6);
+    if(t>=start&&t<=f)active.push(x);
+  }
+  if(active.length)return active[0];
+  return jumat.find(x=>new Date(x[0]+"T00:00:00")>=t)||null;
 }
 function malangParts(){const parts=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Jakarta",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date());const o={};parts.forEach(p=>o[p.type]=p.value);return {iso:`${o.year}-${o.month}-${o.day}`,y:+o.year,m:+o.month,d:+o.day}}
+
 function today(){const x=malangParts();return new Date(x.y,x.m-1,x.d)}
+let selectedDate=today();
+
+function cloneDate(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate())}
+function dateIso(d){
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function triggerSwipeAnimation(direction){
+  const el=document.getElementById("swipeArea");
+  if(!el)return;
+  el.classList.remove("slide-next","slide-prev");
+  void el.offsetWidth;
+  el.classList.add(direction==="next"?"slide-next":"slide-prev");
+}
+function goToDate(offset){
+  const next=cloneDate(selectedDate);
+  next.setDate(next.getDate()+offset);
+  selectedDate=next;
+  triggerSwipeAnimation(offset>0?"next":"prev");
+  render();
+}
+function goToday(){
+  selectedDate=today();
+  triggerSwipeAnimation("next");
+  render();
+}
+function setupDateNavigation(){
+  document.getElementById("prevDayBtn")?.addEventListener("click",()=>goToDate(-1));
+  document.getElementById("nextDayBtn")?.addEventListener("click",()=>goToDate(1));
+  document.getElementById("todayBtn")?.addEventListener("click",goToday);
+
+  const area=document.getElementById("swipeArea");
+  if(!area)return;
+  let startX=0,startY=0;
+  area.addEventListener("touchstart",e=>{
+    if(!e.touches.length)return;
+    startX=e.touches[0].clientX; startY=e.touches[0].clientY;
+  },{passive:true});
+  area.addEventListener("touchend",e=>{
+    if(!e.changedTouches.length)return;
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    if(Math.abs(dx)<55 || Math.abs(dx)<=Math.abs(dy)*1.2)return;
+    if(dx<0)goToDate(1);
+    else goToDate(-1);
+  },{passive:true});
+}
 function updateClock(){const s=new Intl.DateTimeFormat("id-ID",{timeZone:"Asia/Jakarta",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(new Date());document.getElementById("clock").textContent=s.replace(/\./g,":")}
 function render(){
- const d=today(), day=dayNames[d.getDay()];
- const wd=new Intl.DateTimeFormat("id-ID",{weekday:"long",timeZone:"Asia/Jakarta"}).format(d);
- const fullDate=new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric",timeZone:"Asia/Jakarta"}).format(d);
- document.getElementById("todayDay").textContent=wd+", "+fullDate;
- document.getElementById("todayDate").textContent="";
- document.getElementById("hijriDate").textContent="Memuat tanggal Hijriyah…";
- const p=imam[day];
- const arr=[["🌙","Shubuh",p.shubuh,"Fajr"],["☀️","Dhuhur",p.dhuhur,"Dhuhr"],["🌤️","Ashar",p.ashar,"Asr"],["🌇","Maghrib",p.maghrib,"Maghrib"],["🌙","Isya",p.isya,"Isha"]];
- document.getElementById("prayers").innerHTML=arr.map((a,i)=>`<div class="prayer"><div class="num">${i+1}</div><div><span class="icon" aria-hidden="true">${a[0]}</span><span class="time" id="time-${a[3]}">--:--</span><span class="label">${a[1]}</span></div><div class="imam" title="${escapeHtml(a[2])}"><strong>${escapeHtml(a[2])}</strong></div></div>`).join("");
- const j=currentJumat();
- document.getElementById("jumat").innerHTML=j?`<div class="jumat"><div class="jumat-date">📅 Jum'at, ${new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(j[0]+"T00:00:00"))}</div><div class="person"><div class="role">📣 Muadzin</div><div class="name">${escapeHtml(j[1])}</div></div><div class="person"><div class="role">👤 Bilal</div><div class="name">${escapeHtml(j[2])}</div></div><div class="person"><div class="role">🕌 Khotib & Imam</div><div class="name">${escapeHtml(j[3])}</div></div></div>`:"<div class='jumat'>Belum ada data jadwal Jum'at.</div>";
- loadPrayerTimes();
+  const d=cloneDate(selectedDate);
+  const day=dayNames[d.getDay()];
+  const wd=new Intl.DateTimeFormat("id-ID",{weekday:"long"}).format(d);
+  const fullDate=new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(d);
+
+  document.getElementById("todayDay").textContent=wd+", "+fullDate;
+  document.getElementById("todayDate").textContent="";
+  document.getElementById("hijriDate").textContent="Memuat tanggal Hijriyah…";
+
+  const isToday=dateIso(d)===dateIso(today());
+  const todayBtn=document.getElementById("todayBtn");
+  if(todayBtn)todayBtn.textContent=isToday?"Hari Ini":"Kembali Hari Ini";
+
+  const p=imam[day]||{};
+  const arr=[
+    ["🌙","Shubuh",p.shubuh||"-","Fajr"],
+    ["☀️","Dhuhur",p.dhuhur||"-","Dhuhr"],
+    ["🌤️","Ashar",p.ashar||"-","Asr"],
+    ["🌇","Maghrib",p.maghrib||"-","Maghrib"],
+    ["🌙","Isya",p.isya||"-","Isha"]
+  ];
+  document.getElementById("prayers").innerHTML=arr.map((a,i)=>
+    `<div class="prayer"><div class="num">${i+1}</div><div><span class="icon" aria-hidden="true">${a[0]}</span><span class="time" id="time-${a[3]}">--:--</span><span class="label">${a[1]}</span></div><div class="imam" title="${escapeHtml(a[2])}"><strong>${escapeHtml(a[2])}</strong></div></div>`
+  ).join("");
+
+  const j=currentJumat(d);
+  document.getElementById("jumat").innerHTML=j
+    ? `<div class="jumat"><div class="jumat-date">📅 Jum'at, ${new Intl.DateTimeFormat("id-ID",{day:"numeric",month:"long",year:"numeric"}).format(new Date(j[0]+"T00:00:00"))}</div><div class="person"><div class="role">📣 Muadzin</div><div class="name">${escapeHtml(j[1])}</div></div><div class="person"><div class="role">👤 Bilal</div><div class="name">${escapeHtml(j[2])}</div></div><div class="person"><div class="role">🕌 Khotib & Imam</div><div class="name">${escapeHtml(j[3])}</div></div></div>`
+    : "<div class='jumat'>Belum ada data jadwal Jum'at untuk tanggal ini.</div>";
+
+  loadPrayerTimes(d);
 }
 async function loadPrayerTimes(){
  const x=malangParts();
@@ -506,11 +611,11 @@ async function initAuth(){
     } else { await sb.auth.signOut(); currentUser=null; }
   }
 }
-async function boot(){await loadDatabase();render();await initAuth();if(isAdmin){buildImam();buildJumatList();}}
+async function boot(){await loadDatabase();setupDateNavigation();render();await initAuth();if(isAdmin){buildImam();buildJumatList();}}
 boot();
 updateClock();
 setInterval(updateClock,1000);
-setInterval(()=>{render()},60000);
+setInterval(()=>{updateClock(); if(dateIso(selectedDate)===dateIso(today())) render()},60000);
 </script>
 </body>
 </html>
